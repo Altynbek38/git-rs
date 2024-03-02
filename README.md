@@ -1,6 +1,7 @@
 # POS Cash Register API
 
 This is a RESTful API built with Golang for managing employees and products in a Point of Sale (POS) cash register system.
+The POS Cash Register API, developed using Golang, facilitates the management of employees and products within a Point of Sale system. Below are detailed descriptions of the endpoints and database schemas.
 
 ## Endpoints
 
@@ -33,6 +34,13 @@ employee (
     enrolled TIMESTAMP
 )
 
+categories (
+    id VARCHAR(255) PRIMARY KEY,
+    title VARCHAR(255),
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
+)
+
 product (
     id VARCHAR(255) PRIMARY KEY,
     title VARCHAR(255),
@@ -43,6 +51,34 @@ product (
     created_at TIMESTAMP,
     updated_at TIMESTAMP
 )
+
+orders (
+   id VARCHAR(255) PRIMARY KEY,
+    user_id VARCHAR(255) REFERENCES employee(id),
+    payment_type_id VARCHAR(255) REFERENCES payments(id),
+    total_price INTEGER,
+    total_paid INTEGER,
+    total_return INTEGER,
+    receipt_id VARCHAR(255),
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
+);
+
+
+
+order_product (
+    id VARCHAR(255),
+    order_id VARCHAR(255) REFERENCES orders(id),
+    product_id VARCHAR(255) REFERENCES product(id),
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
+);
+
+payments (
+    id VARCHAR(255) PRIMARY KEY,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
+);
 
 ### Team
 Zholdybay Altynbek - 22B030543
