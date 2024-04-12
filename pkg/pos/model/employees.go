@@ -8,13 +8,13 @@ import (
 )
 
 type Employee struct {
-	Id          string `json:"id"`
-	Name        string `json:"name"`
-	Surname     string `json:"surname"`
-	Password    string `json:"password"`
-	IsAdmin     bool   `json:"isAdmin"`
-	PhoneNumber string `json:"phoneNumber"`
-	Enrolled    string `json:"enrolled"`
+	Id          int       `json:"id"`
+	Name        string    `json:"name"`
+	Surname     string    `json:"surname"`
+	Password    string    `json:"password"`
+	IsAdmin     bool      `json:"isAdmin"`
+	PhoneNumber string    `json:"phoneNumber"`
+	Enrolled    time.Time `json:"enrolled"`
 }
 
 type EmployeeModel struct {
@@ -25,18 +25,18 @@ type EmployeeModel struct {
 
 func (e EmployeeModel) Register(emp *Employee) error {
 	query := `
-			INSERT INTO employee (id, name, surname, password, is_admin, phone_number, enrolled) 
-			VALUES ($1, $2, $3, $4, $5, $6, $7)
+			INSERT INTO employee (name, surname, password, is_admin, phone_number, enrolled) 
+			VALUES ($1, $2, $3, $4, $5, $6)
 			RETURNING id, password
 			`
-	args := []interface{}{emp.Id, emp.Name, emp.Surname, emp.Password, emp.IsAdmin, emp.PhoneNumber, emp.Enrolled}
+	args := []interface{}{emp.Name, emp.Surname, emp.Password, emp.IsAdmin, emp.PhoneNumber, emp.Enrolled}
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
 	return e.DB.QueryRowContext(ctx, query, args...).Scan(&emp.Id, &emp.Password)
 }
 
-func (e EmployeeModel) Get(id string) (*Employee, error) {
+func (e EmployeeModel) Get(id int) (*Employee, error) {
 	query := `SELECT * FROM employee where id = $1`
 
 	var emp Employee
@@ -82,7 +82,7 @@ func (e EmployeeModel) GetAll() (*[]Employee, error) {
 	return &emp, nil
 }
 
-func (e EmployeeModel) Update(id string, emp *Employee) error {
+func (e EmployeeModel) Update(id int, emp *Employee) error {
 	query := `
 			UPDATE employee 
 			SET name = $1, surname = $2, password = $3, is_admin = $4, phone_number = $5
@@ -96,7 +96,7 @@ func (e EmployeeModel) Update(id string, emp *Employee) error {
 	return e.DB.QueryRowContext(ctx, query, args...).Scan(&emp.Id, &emp.Password)
 }
 
-func (e EmployeeModel) Delete(id string) error {
+func (e EmployeeModel) Delete(id int) error {
 	query := `DELETE FROM employee WHERE id = $1`
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)

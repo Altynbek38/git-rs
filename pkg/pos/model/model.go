@@ -7,8 +7,10 @@ import (
 )
 
 type Models struct {
-	Employee EmployeeModel
-	Product ProductModule
+	Employee 	EmployeeModel
+	Product 	ProductModule
+	Category 	CategoryModule
+	Order 		OrderModule
 }
 
 
@@ -27,5 +29,15 @@ func NewModels(db *sql.DB) Models {
 			InfoLog:	infoLog,
 			ErrorLog: 	errorLog,
 		},
+		Category: CategoryModule{
+			DB: 		db,
+			InfoLog: 	infoLog,
+			ErrorLog: 	errorLog,
+		},
+		Order: OrderModule{
+			DB:			db,
+			InfoLog: 	infoLog,
+			ErrorLog:   errorLog,
+		},	
 	}
 }

@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"pos-rs/pkg/pos/model"
 	"time"
+	"strconv"
 	"github.com/gorilla/mux"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -26,7 +27,7 @@ func (app *Application) registerEmployee(w http.ResponseWriter, r *http.Request)
 
 	newEmployee.Password = string(hashedPassword) 
 
-	newEmployee.Enrolled = time.Now().Format(time.RFC3339) 
+	newEmployee.Enrolled = time.Now()
 
 	err = app.Models.Employee.Register(&newEmployee)
 	if err != nil {
@@ -40,7 +41,7 @@ func (app *Application) registerEmployee(w http.ResponseWriter, r *http.Request)
 
 func (app *Application) logInEmployee(w http.ResponseWriter, r *http.Request) {
 	var logInRequest struct {
-		Id       string `json:"id"`
+		Id       int `json:"id"`
 		Password string `string:"password"`
 	}
 
@@ -73,16 +74,22 @@ func (app *Application) logInEmployee(w http.ResponseWriter, r *http.Request) {
 
 func (app *Application) updateEmployee(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	id := vars["id"]
+	param := vars["id"]
+
+    employeeId, err := strconv.Atoi(param)
+    if err != nil {
+        app.respondWithError(w, http.StatusBadRequest, "Invalid Product ID")
+        return
+    }
 
 	var updatedEmployee model.Employee
-	err := json.NewDecoder(r.Body).Decode(&updatedEmployee)
+	err = json.NewDecoder(r.Body).Decode(&updatedEmployee)
 	if err != nil {
 		app.respondWithError(w, http.StatusBadRequest, "Invalid Request Payload")
 		return
 	}
 
-	err = app.Models.Employee.Update(id, &updatedEmployee)
+	err = app.Models.Employee.Update(employeeId, &updatedEmployee)
 	if err != nil {
 		app.respondWithError(w, http.StatusInternalServerError, "500 Internal Server Error")
 		return
@@ -105,7 +112,13 @@ func (app *Application) getEmployee(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	param := vars["id"]
 
-	Employee, err := app.Models.Employee.Get(param)
+    employeeId, err := strconv.Atoi(param)
+    if err != nil {
+        app.respondWithError(w, http.StatusBadRequest, "Invalid Product ID")
+        return
+    }
+
+	Employee, err := app.Models.Employee.Get(employeeId)
 	if err != nil {
 		app.respondWithError(w, http.StatusNotFound, "404 Employee Not Found")
 		return
@@ -116,9 +129,15 @@ func (app *Application) getEmployee(w http.ResponseWriter, r *http.Request) {
 
 func (app *Application) deleteEmployee(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	id := vars["id"]
+	param := vars["id"]
 
-	err := app.Models.Employee.Delete(id)
+    employeeId, err := strconv.Atoi(param)
+    if err != nil {
+        app.respondWithError(w, http.StatusBadRequest, "Invalid Product ID")
+        return
+    }
+
+	err = app.Models.Employee.Delete(employeeId)
 	if err != nil {
 		app.respondWithError(w, http.StatusInternalServerError, "500 Internal Server Error")
 		return
