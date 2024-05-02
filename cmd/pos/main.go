@@ -4,83 +4,94 @@ import (
 	"database/sql"
 	"flag"
 	"fmt"
-	"log"
-	"net/http"
+	"os"
+	"pos-rs/pkg/pos/jsonlog"
 	"pos-rs/pkg/pos/model"
-
-	"github.com/gorilla/mux"
+	"pos-rs/pkg/pos/vcs"
+	"sync"
+	"github.com/peterbourgon/ff/v3"
 	_ "github.com/lib/pq"
-	// "github.com/gorilla/sessions"
 )
 
 type Config struct {
-	Port string
+	Port int
 	Env  string
+	Fill bool
+	Migrations string
 	DB   struct {
 		DSN string
 	}
 }
 
+var (
+	version = vcs.Version()
+)
+
 type Application struct {
 	Config Config
 	Models model.Models
+	logger *jsonlog.Logger
+	wg     sync.WaitGroup
 }
 
 func main() {
-	var cfg Config
-	flag.StringVar(&cfg.Port, "port", ":8081", "API server port")
-	flag.StringVar(&cfg.Env, "env", "development", "Environment (development|staging|production)")
-	flag.StringVar(&cfg.DB.DSN, "db-dsn", "postgres://postgres:postgres@localhost/pos_rs?sslmode=disable", "PostgreSQL DSN")
-	flag.Parse()
+	fs := flag.NewFlagSet("demo-app", flag.ContinueOnError)
 
+	var (
+		cfg        Config
+		fill       = fs.Bool("fill", false, "Fill database with dummy data")
+		migrations = fs.String("migrations", "", "Path to migration files folder. If not provided, migrations do not applied")
+		port       = fs.Int("port", 8081, "API server port")
+		env        = fs.String("env", "development", "Environment (development|staging|production)")
+		dbDsn      = fs.String("dsn", "postgres://postgres:postgres@localhost:5432/pos_rs?sslmode=disable", "PostgreSQL DSN")
+	)
+
+	// Init logger
+	logger := jsonlog.NewLogger(os.Stdout, jsonlog.LevelInfo)
+
+	if err := ff.Parse(fs, os.Args[1:], ff.WithEnvVars()); err != nil {
+		logger.PrintFatal(err, nil)
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+	}
+
+	cfg.Port = *port
+	cfg.Env = *env
+	cfg.Fill = *fill
+	cfg.DB.DSN = *dbDsn
+	cfg.Migrations = *migrations
+
+	logger.PrintInfo("starting application with configuration", map[string]string{
+		"port":       fmt.Sprintf("%d", cfg.Port),
+		"fill":       fmt.Sprintf("%t", cfg.Fill),
+		"env":        cfg.Env,
+		"db":         cfg.DB.DSN,
+		"migrations": cfg.Migrations,
+	})
+
+	// Connect to DB
 	db, err := OpenDB(cfg)
 	if err != nil {
-		log.Fatal(err)
+		logger.PrintError(err, nil)
 		return
 	}
-	defer db.Close()
+	// Defer a call to db.Close() so that the connection pool is closed before the main()
+	// function exits.
+	defer func() {
+		if err := db.Close(); err != nil {
+			logger.PrintFatal(err, nil)
+		}
+	}()
 
 	app := &Application{
 		Config: cfg,
 		Models: model.NewModels(db),
+		logger: logger,
 	}
 
-	app.run()
-}
-
-func (app *Application) run() {
-	r := mux.NewRouter()
-	v1 := r.PathPrefix("/api/v1").Subrouter()
-	fmt.Println("Running")
-
-	v1.HandleFunc("/employees", app.getAllEmployee).Methods("GET")
-	v1.HandleFunc("/employees/{id}", app.getEmployee).Methods("GET")
-	v1.HandleFunc("/employees", app.registerEmployee).Methods("POST")
-	v1.HandleFunc("/employees/{id}", app.updateEmployee).Methods("PUT")
-	v1.HandleFunc("/employees/{id}", app.deleteEmployee).Methods("DELETE")
-
-	v1.HandleFunc("/categories", app.getAllCategory).Methods("GET")
-	v1.HandleFunc("/categories/{categoryId}", app.getCategory).Methods("GET")
-	v1.HandleFunc("/categories", app.createCategory).Methods("POST")
-	v1.HandleFunc("/categories/{categoryId}", app.updateCategory).Methods("PUT")
-	v1.HandleFunc("/categories/{categoryId}", app.deleteCategory).Methods("DELETE")
-
-	v1.HandleFunc("/products", app.getAllProduct).Methods("GET")
-	v1.HandleFunc("/products/{productId}", app.getProduct).Methods("GET")
-	v1.HandleFunc("/products", app.createProduct).Methods("POST")
-	v1.HandleFunc("/products/{productId}", app.updateProduct).Methods("PUT")
-	v1.HandleFunc("/products/{productId}", app.deleteProduct).Methods("DELETE")
-
-	v1.HandleFunc("/orders", app.getAllOrders).Methods("GET")
-	v1.HandleFunc("/orders/{id}", app.getOrder).Methods("GET")
-	v1.HandleFunc("/orders", app.createOrder).Methods("POST")
-	v1.HandleFunc("/orders/{id}/products", app.addProductToOrder).Methods("PUT")
-	v1.HandleFunc("/orders/{id}/products/{productId}", app.removeProductFromOrder).Methods("PUT")
-	v1.HandleFunc("/orders/{id}", app.deleteOrder).Methods("DELETE")
-
-	log.Printf("Starting server on %s\n", app.Config.Port)
-	err := http.ListenAndServe(app.Config.Port, r)
-	log.Fatal(err)
+	// Call app.server() to start the server.
+	if err := app.serve(); err != nil {
+		logger.PrintFatal(err, nil)
+	}
 }
 
 func OpenDB(cfg Config) (*sql.DB, error) {

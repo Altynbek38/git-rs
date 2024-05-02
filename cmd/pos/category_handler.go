@@ -2,12 +2,12 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"pos-rs/pkg/pos/model"
-	"fmt"
 	"strconv"
+
 	"github.com/gorilla/mux"
-	
 )
 
 func (app *Application) createCategory(w http.ResponseWriter, r *http.Request) {
@@ -31,12 +31,12 @@ func (app *Application) createCategory(w http.ResponseWriter, r *http.Request) {
 func (app *Application) getCategory(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	param := vars["categoryId"]
-	
-    categoryId, err := strconv.Atoi(param)
-    if err != nil {
-        app.respondWithError(w, http.StatusBadRequest, "Invalid Category ID")
-        return
-    }
+
+	categoryId, err := strconv.Atoi(param)
+	if err != nil {
+		app.respondWithError(w, http.StatusBadRequest, "Invalid Category ID")
+		return
+	}
 
 	Category, err := app.Models.Category.Get(categoryId)
 	if err != nil {
@@ -61,11 +61,11 @@ func (app *Application) updateCategory(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	param := vars["categoryId"]
 
-    categoryId, err := strconv.Atoi(param)
-    if err != nil {
-        app.respondWithError(w, http.StatusBadRequest, "Invalid Category ID")
-        return
-    }
+	categoryId, err := strconv.Atoi(param)
+	if err != nil {
+		app.respondWithError(w, http.StatusBadRequest, "Invalid Category ID")
+		return
+	}
 
 	var updatedCategory model.Category
 	err = json.NewDecoder(r.Body).Decode(&updatedCategory)
@@ -73,7 +73,7 @@ func (app *Application) updateCategory(w http.ResponseWriter, r *http.Request) {
 		app.respondWithError(w, http.StatusBadRequest, "Invalid Request Payload")
 		return
 	}
-	
+
 	err = app.Models.Category.Update(categoryId, &updatedCategory)
 	updatedCategory.Id = categoryId
 	if err != nil {
@@ -88,11 +88,11 @@ func (app *Application) deleteCategory(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	param := vars["categoryId"]
 
-    categoryId, err := strconv.Atoi(param)
-    if err != nil {
-        app.respondWithError(w, http.StatusBadRequest, "Invalid Category ID")
-        return
-    }
+	categoryId, err := strconv.Atoi(param)
+	if err != nil {
+		app.respondWithError(w, http.StatusBadRequest, "Invalid Category ID")
+		return
+	}
 
 	err = app.Models.Category.Delete(categoryId)
 	if err != nil {
@@ -102,4 +102,3 @@ func (app *Application) deleteCategory(w http.ResponseWriter, r *http.Request) {
 
 	app.respondWithJSON(w, http.StatusOK, map[string]string{"result": "success"})
 }
-

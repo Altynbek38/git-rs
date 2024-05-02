@@ -11,7 +11,7 @@ import (
 type Product struct {
 	Id          int       `json:"id"`
 	Name        string    `json:"name"`
-	CategoryId  int    `json:"categoryId"`
+	CategoryId  int       `json:"categoryId"`
 	Price       int       `json:"price"`
 	Description string    `json:"description"`
 	Amount      int       `json:"amount"`
@@ -61,33 +61,40 @@ func (p ProductModule) Get(id int) (*Product, error) {
 	return &product, nil
 }
 
-func (p ProductModule) GetAll() (*[]Product, error) {
-	query := `SELECT * from products`
+func (p ProductModule) GetAll(name string, category int, filters Filters) (*[]Product, Metadata, error) {
+	query := fmt.Sprintf(`
+			SELECT count(*) OVER(), * from products
+			WHERE (to_tsvector('simple', name ) @@ plainto_tsquery('simple', $1) OR $1 = '')
+			AND (category_id = $2 OR $2 = 1)
+			ORDER BY %s %s, id ASC
+			LIMIT $3 OFFSET $4
+	`, filters.sortColumn(), filters.sortDirection())
 
+	totalRecords := 0
 	var products []Product
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	rows, err := p.DB.QueryContext(ctx, query)
+	rows, err := p.DB.QueryContext(ctx, query, name, category, filters.limit(), filters.offset())
 	if err != nil {
-		return nil, err
+		return nil, Metadata{}, err
 	}
 	defer rows.Close()
 
 	for rows.Next() {
 		var prd Product
-		err := rows.Scan(&prd.Id, &prd.Name, &prd.CategoryId, &prd.Price, &prd.Description, &prd.Amount, &prd.CreatedAt, &prd.UpdatedAt)
+		err := rows.Scan(&totalRecords, &prd.Id, &prd.Name, &prd.CategoryId, &prd.Price, &prd.Description, &prd.Amount, &prd.CreatedAt, &prd.UpdatedAt)
 		if err != nil {
-			return nil, err
+			return nil, Metadata{}, err
 		}
 		products = append(products, prd)
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return nil, Metadata{}, err
 	}
-
-	return &products, nil
+	metadata := calculateMetadata(totalRecords, filters.Page, filters.PageSize)
+	return &products, metadata, nil
 }
 
 func (p ProductModule) Update(id int, product *Product) error {

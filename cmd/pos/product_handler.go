@@ -2,7 +2,7 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
+
 	"net/http"
 	"pos-rs/pkg/pos/model"
 	"pos-rs/pkg/pos/validator"
@@ -33,11 +33,11 @@ func (app *Application) getProduct(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	param := vars["productId"]
 
-    productId, err := strconv.Atoi(param)
-    if err != nil {
-        app.respondWithError(w, http.StatusBadRequest, "Invalid Product ID")
-        return
-    }
+	productId, err := strconv.Atoi(param)
+	if err != nil {
+		app.respondWithError(w, http.StatusBadRequest, "Invalid Product ID")
+		return
+	}
 
 	Product, err := app.Models.Product.Get(productId)
 	if err != nil {
@@ -50,42 +50,44 @@ func (app *Application) getProduct(w http.ResponseWriter, r *http.Request) {
 
 func (app *Application) getAllProduct(w http.ResponseWriter, r *http.Request) {
 	var input struct {
-		Name string
+		Name     string
 		Cateogry int
-		Sort string
+		model.Filters
 	}
 
 	v := validator.New()
 	qs := r.URL.Query()
 
 	input.Name = app.readString(qs, "name", "")
-	input.Cateogry = app.readInt(qs, "category", v)
-	input.Sort = app.readString(qs, "sort", "id")
+	input.Cateogry = app.readInt(qs, "category", 1, v)
+
+	input.Filters.Page = app.readInt(qs, "page", 1, v)
+	input.Filters.PageSize = app.readInt(qs, "page_size", 20, v)
+	input.Filters.Sort = app.readString(qs, "sort", "id")
+	input.Filters.SortSafelist = []string{"id", "name", "price", "-id", "-name", "-price"}
 
 	if !v.Valid() {
 		app.respondWithError(w, http.StatusForbidden, "Failed Validation")
 	}
 
-	fmt.Fprintf(w, "%+v\n", input)
+	products, metadata, err := app.Models.Product.GetAll(input.Name, input.Cateogry, input.Filters)
+	if err != nil {
+		app.respondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
 
-	// products, err := app.Models.Product.GetAll()
-	// if err != nil {
-	// 	app.respondWithError(w, http.StatusInternalServerError, err.Error())
-	// 	return
-	// }
-	// fmt.Println("Hello from getAllProduct")
-	// app.respondWithJSON(w, http.StatusFound, products)
+	app.respondWithJSON(w, http.StatusFound, envelope{"products": products, "metadata": metadata})
 }
 
 func (app *Application) updateProduct(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	param := vars["productId"]
 
-    productId, err := strconv.Atoi(param)
-    if err != nil {
-        app.respondWithError(w, http.StatusBadRequest, "Invalid Product ID")
-        return
-    }
+	productId, err := strconv.Atoi(param)
+	if err != nil {
+		app.respondWithError(w, http.StatusBadRequest, "Invalid Product ID")
+		return
+	}
 
 	var updatedProduct model.Product
 	err = json.NewDecoder(r.Body).Decode(&updatedProduct)
@@ -108,11 +110,11 @@ func (app *Application) deleteProduct(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	param := vars["productId"]
 
-    productId, err := strconv.Atoi(param)
-    if err != nil {
-        app.respondWithError(w, http.StatusBadRequest, "Invalid Product ID")
-        return
-    }
+	productId, err := strconv.Atoi(param)
+	if err != nil {
+		app.respondWithError(w, http.StatusBadRequest, "Invalid Product ID")
+		return
+	}
 	err = app.Models.Product.Delete(productId)
 	if err != nil {
 		app.respondWithError(w, http.StatusInternalServerError, "500 Internal Server Error")
@@ -121,4 +123,3 @@ func (app *Application) deleteProduct(w http.ResponseWriter, r *http.Request) {
 
 	app.respondWithJSON(w, http.StatusOK, map[string]string{"result": "success"})
 }
-

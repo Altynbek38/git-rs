@@ -5,7 +5,6 @@ import (
 	"net/http"
 )
 
-
 func (app *Application) respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
 	response, err := json.Marshal(payload)
 
