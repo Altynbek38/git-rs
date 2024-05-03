@@ -6,19 +6,17 @@ services:
     repo: https://github.com/Altynbek38/pos-rs
     region: frankfurt
     branch: main
-    buildCommand: docker build -t renderapp .
-    startCommand: docker run -e PORT=$PORT -e ENV=$ENV -e FILL=$FILL -e MIGRATIONS=$MIGRATIONS -e DSN=$DSN -p 8081:8080 renderapp
     envVars:
       - key: PORT
-        from: APP_PORT
+        sync: false
       - key: ENV
-        from: APP_ENV
+        sync: false
       - key: FILL
-        from: APP_FILL
+        sync: false
       - key: MIGRATIONS
-        from: APP_MIGRATIONS
+        sync: false
       - key: DSN
-        from: APP_DSN
+        sync: false
     buildFilter:
       paths:
       - app/**
