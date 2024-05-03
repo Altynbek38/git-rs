@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: go
+    runtime: docker
+    plan: free
+    repo: https://github.com/Altynbek38/pos-rs
+    region: frankfurt
+    branch: main
+    envVars:
+      - key: MONGO_URL
+        sync: false
+    buildFilter:
+      paths:
+      - app/**
+  
