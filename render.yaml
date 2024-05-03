@@ -7,8 +7,16 @@ services:
     region: frankfurt
     branch: main
     envVars:
-      - key: MONGO_URL
-        sync: false
+      - key: PORT
+        from: APP_PORT
+      - key: ENV
+        from: APP_ENV
+      - key: FILL
+        from: APP_FILL
+      - key: MIGRATIONS
+        from: APP_MIGRATIONS
+      - key: DSN
+        from: APP_DSN
     buildFilter:
       paths:
       - app/**
