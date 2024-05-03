@@ -10,6 +10,9 @@ import (
 	"pos-rs/pkg/pos/vcs"
 	"sync"
 	"github.com/peterbourgon/ff/v3"
+	"github.com/golang-migrate/migrate/v4"
+	"github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 	_ "github.com/lib/pq"
 )
 
@@ -88,6 +91,7 @@ func main() {
 		logger: logger,
 	}
 
+
 	// Call app.server() to start the server.
 	if err := app.serve(); err != nil {
 		logger.PrintFatal(err, nil)
@@ -95,10 +99,34 @@ func main() {
 }
 
 func OpenDB(cfg Config) (*sql.DB, error) {
+	// Use sql.Open() to create an empty connection pool, using the DSN from the config // struct.
 	db, err := sql.Open("postgres", cfg.DB.DSN)
-
 	if err != nil {
 		return nil, err
+	}
+	err = db.Ping()
+	if err != nil {
+		return nil, err
+	}
+
+	// https://github.com/golang-migrate/migrate?tab=readme-ov-file#use-in-your-go-project
+	if cfg.Migrations != "" { 
+		driver, err := postgres.WithInstance(db, &postgres.Config{})
+		if err != nil {
+			return nil, err
+		}
+		m, err := migrate.NewWithDatabaseInstance(
+			cfg.Migrations,
+			"postgres", driver)
+		if err != nil {
+			return nil, err
+		}
+		err = m.Up()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "e5: %v\n", err)
+			//return nil, err
+		}
+
 	}
 
 	return db, nil

@@ -1,1 +1,1 @@
-DROP TABLE IF NOT EXISTS users_permissions;
+DROP TABLE IF EXISTS users_permissions CASCADE;

@@ -1,1 +1,1 @@
-DROP TABLE IF NOT EXISTS permissions;
+DROP TABLE IF EXISTS permissions CASCADE;
